@@ -68,7 +68,7 @@ public class OrderServiceImpl implements OrderService {
 
         Order order = new Order();
 
-        List<OrderItem> items = getOrderItemsAndTotalPrice(dto.getItems(), order);
+        List<OrderItem> items = getOrderItems(dto.getItems(), order);
 
         order.setUserId(dto.getUserId());
         order.setOrderStatus(OrderStatus.CREATED);
@@ -84,7 +84,7 @@ public class OrderServiceImpl implements OrderService {
                 .build();
     }
 
-    private List<OrderItem> getOrderItemsAndTotalPrice(Map<Long, Integer> items, Order order) {
+    private List<OrderItem> getOrderItems(Map<Long, Integer> items, Order order) {
         List<OrderItem> orderItems = new ArrayList<>();
 
         for (Map.Entry<Long, Integer> entry : items.entrySet()) {
@@ -166,7 +166,7 @@ public class OrderServiceImpl implements OrderService {
             order.setDeleted(dto.getDeleted());
         }
         if(dto.getItems() != null) {
-            List<OrderItem> items = getOrderItemsAndTotalPrice(dto.getItems(), order);
+            List<OrderItem> items = getOrderItems(dto.getItems(), order);
             order.setItems(items);
             order.calculateTotalPrice();
         }
@@ -181,11 +181,11 @@ public class OrderServiceImpl implements OrderService {
     public void deleteOrderById(Long id, UserPrincipal principal) {
         Order order = orderRepository.findById(id).orElseThrow(() -> new EntityNotFoundException(ORDER_NOT_FOUND_MESSAGE));
 
-        if(!principal.getRole().equals(UserRole.ADMIN.toString()) && principal.getId().equals(order.getUserId())) {
+        if(!principal.getRole().equals(UserRole.ADMIN.toString()) && !principal.getId().equals(order.getUserId())) {
             throw new AccessDeniedException(HttpStatus.FORBIDDEN.name());
         }
 
-        orderRepository.delete(order);
+        order.setDeleted(true);
     }
 
     @Override
@@ -194,7 +194,7 @@ public class OrderServiceImpl implements OrderService {
 
         UserInfoDto userInfo = getUserInfoById(order.getUserId());
 
-        if(!principal.getRole().equals(UserRole.ADMIN.toString()) && principal.getId().equals(order.getUserId())) {
+        if(!principal.getRole().equals(UserRole.ADMIN.toString()) && !principal.getId().equals(order.getUserId())) {
             throw new AccessDeniedException(HttpStatus.FORBIDDEN.name());
         }
 
@@ -205,18 +205,15 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public Page<OrderDto> getAll(LocalDate start, LocalDate end, String status, int page, int size, String sortBy) {
+    public Page<OrderDto> getAll(LocalDate start, LocalDate end, String[] statuses, int page, int size, String sortBy) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy));
 
-        Specification<Order> specification = null;
+        Specification<Order> specification = Specification.unrestricted();
         if(start != null && end != null) {
-            specification = Specification.where(OrderSpecification.hasCreationDateIsBetween(start, end));
+            specification = specification.and(OrderSpecification.hasCreationDateIsBetween(start, end));
         }
-        if(status != null && !status.isBlank()) {
-            if(specification == null) {
-                specification = Specification.where(OrderSpecification.hasStatus(OrderStatus.valueOf(status)));
-            }
-            else {
+        if(statuses != null && statuses.length != 0) {
+            for (String status : statuses) {
                 specification = specification.and(OrderSpecification.hasStatus(OrderStatus.valueOf(status)));
             }
         }

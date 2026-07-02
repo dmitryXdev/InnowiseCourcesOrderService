@@ -1,4 +1,4 @@
-name: UserService CI pipeline
+name: OrderService CI pipeline
 
 on:
   push:
@@ -41,4 +41,4 @@ jobs:
             -Dsonar.login=$SONAR_TOKEN
 
       - name: Build docker image
-        run: docker build -t user-service:latest .
+        run: docker build -t order-service:latest .

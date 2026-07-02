@@ -18,3 +18,6 @@ databaseChangeLog:
         - sqlFile:
             path: sql/add-orders-table-indexes.sql
             relativeToChangelogFile: true
+        - sqlFile:
+            path: sql/add-order_items-indexes.sql
+            relativeToChangelogFile: true

@@ -2,12 +2,16 @@ package com.innowise.orderservice.exception.handler;
 
 import com.innowise.orderservice.exception.AccessDeniedException;
 import com.innowise.orderservice.exception.BadIncomeDataException;
+import com.innowise.orderservice.exception.EntityNotFoundException;
 import com.innowise.orderservice.exception.ServiceUnavailableException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageConversionException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.CredentialsExpiredException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestValueException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -18,8 +22,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .body(
                         ErrorResponse.builder()
-                                .message(e.getMessage())
+                                .message(e.getClass().getName())
                                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                                .build()
+                );
+    }
+
+    @ExceptionHandler(MissingRequestValueException.class)
+    public ResponseEntity<ErrorResponse> missingRequestValueException(MissingRequestValueException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST.value())
+                .body(
+                        ErrorResponse.builder()
+                                .message(e.getMessage())
+                                .status(HttpStatus.BAD_REQUEST.value())
                                 .build()
                 );
     }
@@ -80,7 +95,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ErrorResponse> authenticationException(BadCredentialsException e) {
+    public ResponseEntity<ErrorResponse> badCredentialsException(BadCredentialsException e) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN.value())
                 .body(
                         ErrorResponse.builder()
@@ -91,12 +106,45 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(CredentialsExpiredException.class)
-    public ResponseEntity<ErrorResponse> authenticationException(CredentialsExpiredException e) {
+    public ResponseEntity<ErrorResponse> credentialsExpiredException(CredentialsExpiredException e) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN.value())
                 .body(
                         ErrorResponse.builder()
                                 .message(e.getMessage())
                                 .status(HttpStatus.FORBIDDEN.value())
+                                .build()
+                );
+    }
+
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<ErrorResponse> entityNotFoundException(EntityNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST.value())
+                .body(
+                        ErrorResponse.builder()
+                                .message(e.getMessage())
+                                .status(HttpStatus.BAD_REQUEST.value())
+                                .build()
+                );
+    }
+
+    @ExceptionHandler(HttpMessageConversionException.class)
+    public ResponseEntity<ErrorResponse> entityNotFoundException(HttpMessageConversionException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST.value())
+                .body(
+                        ErrorResponse.builder()
+                                .message(e.getMessage())
+                                .status(HttpStatus.BAD_REQUEST.value())
+                                .build()
+                );
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> methodArgumentNotValidException(MethodArgumentNotValidException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST.value())
+                .body(
+                        ErrorResponse.builder()
+                                .message(e.getMessage())
+                                .status(HttpStatus.BAD_REQUEST.value())
                                 .build()
                 );
     }

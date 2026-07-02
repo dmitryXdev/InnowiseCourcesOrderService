@@ -31,15 +31,28 @@
         <java.version>21</java.version>
         <org.mapstruct.version>1.6.3</org.mapstruct.version>
         <org.projectlombok.version>1.18.46</org.projectlombok.version>
+        <org.wiremock.version>3.13.1</org.wiremock.version>
         <openfeign.version>5.0.1</openfeign.version>
-        <sonar.plugin.version>4.0.0.4121</sonar.plugin.version>
         <jacoco.plugin.version>0.8.12</jacoco.plugin.version>
         <sonar.organization>dmitryxdev</sonar.organization>
         <sonar.projectKey>dmitryXdev_InnowiseCourcesOrderService</sonar.projectKey>
         <sonar.coverage.jacoco.xmlReportPaths>target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+        <sonar.plugin.version>4.0.0.4121</sonar.plugin.version>
         <spring.cloud.starter.circuitbreaker.resilience4j.version>5.0.1</spring.cloud.starter.circuitbreaker.resilience4j.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-bom</artifactId>
+                <version>12.0.16</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -122,6 +135,12 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers-postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-jetty12</artifactId>
+            <version>${org.wiremock.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

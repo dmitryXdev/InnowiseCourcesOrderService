@@ -17,6 +17,5 @@ import org.springframework.web.bind.annotation.RequestBody;
 @Validated
 public interface AuthServiceClient {
     @PostMapping("/auth/validate")
-    @Valid
     TokenValidationResponseDto validate(@RequestBody @Valid TokenValidationRequestDto dto);
 }

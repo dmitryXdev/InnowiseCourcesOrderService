@@ -4,7 +4,6 @@ import com.innowise.orderservice.dto.OrderDto;
 import com.innowise.orderservice.model.Order;
 import org.mapstruct.InheritInverseConfiguration;
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring",
         uses = {ItemMapper.class, OrderItemMapper.class})

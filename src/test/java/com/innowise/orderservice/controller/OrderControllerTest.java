@@ -1,5 +1,7 @@
 package com.innowise.orderservice.controller;
 
+import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.client.WireMock;
 import com.innowise.orderservice.config.TestConfig;
 import com.innowise.orderservice.dao.ItemRepository;
 import com.innowise.orderservice.dao.OrderRepository;
@@ -8,14 +10,10 @@ import com.innowise.orderservice.dto.OrderDto;
 import com.innowise.orderservice.dto.PageResponse;
 import com.innowise.orderservice.dto.PageResponseDto;
 import com.innowise.orderservice.dto.ResponseDto;
-import com.innowise.orderservice.dto.TokenValidationRequestDto;
 import com.innowise.orderservice.dto.TokenValidationResponseDto;
 import com.innowise.orderservice.dto.UpdateOrderDto;
 import com.innowise.orderservice.dto.UserInfoDto;
-import com.innowise.orderservice.feign.AuthServiceClient;
-import com.innowise.orderservice.feign.UserServiceClient;
 import com.innowise.orderservice.model.Item;
-import com.innowise.orderservice.model.Order;
 import com.innowise.orderservice.model.OrderStatus;
 import com.innowise.orderservice.service.impl.OrderServiceImpl;
 import org.junit.jupiter.api.AfterEach;
@@ -28,35 +26,40 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import tools.jackson.databind.JavaType;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.serverError;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
 @Import(TestConfig.class)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class OrderControllerTest {
+    private final WireMockServer userService = new WireMockServer(8081);
+    private final WireMockServer authService = new WireMockServer(8082);
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -66,12 +69,6 @@ class OrderControllerTest {
     @Autowired
     private OrderServiceImpl orderService;
 
-    @MockitoBean
-    private AuthServiceClient authServiceClient;
-
-    @MockitoBean
-    private UserServiceClient userServiceClient;
-
     @Autowired
     private OrderRepository orderRepository;
 
@@ -79,25 +76,13 @@ class OrderControllerTest {
     private ItemRepository itemRepository;
 
     private final List<Long> items = new ArrayList<>();
+
     private final static String token = "Bearer token";
 
     @BeforeEach
-    void setUpFeign() {
-        TokenValidationResponseDto response = TokenValidationResponseDto.builder()
-                .valid(true)
-                .role("ADMIN")
-                .userId(null)
-                .build();
-
-        UserInfoDto dto = UserInfoDto.builder()
-                .id(0L)
-                .email("some@email.com")
-                .name("Name")
-                .surname("Surname")
-                .build();
-
-        when(authServiceClient.validate(any(TokenValidationRequestDto.class))).thenReturn(response);
-        when(userServiceClient.getUserInfoById(any(Long.class))).thenReturn(dto);
+    void startWireMock() {
+        userService.start();
+        authService.start();
     }
 
     @BeforeEach
@@ -116,6 +101,8 @@ class OrderControllerTest {
     void clearDb() {
         orderRepository.deleteAll();
         itemRepository.deleteAll();
+        userService.stop();
+        authService.stop();
     }
 
     private CreateOrderDto generateCreateOrderDto(Long userId) {
@@ -142,9 +129,44 @@ class OrderControllerTest {
         return dtos;
     }
 
+    private void setUpPositiveWireMockAnswer() {
+        UserInfoDto dto = UserInfoDto.builder()
+                .id(0L)
+                .email("some@email.com")
+                .name("Name")
+                .surname("Surname")
+                .build();
+
+        TokenValidationResponseDto response = TokenValidationResponseDto.builder()
+                .valid(true)
+                .role("ADMIN")
+                .userId(null)
+                .build();
+
+        userService.stubFor(WireMock.post(urlPathMatching("/users/[^/]+/info"))
+                .willReturn(okJson(objectMapper.writeValueAsString(dto))));
+        authService.stubFor(WireMock.post(urlEqualTo("/auth/validate"))
+                .willReturn(okJson(objectMapper.writeValueAsString(response))));
+    }
+
+    private void setUpNegativeWireMockAnswer() {
+        TokenValidationResponseDto response = TokenValidationResponseDto.builder()
+                .valid(false)
+                .role(null)
+                .userId(null)
+                .build();
+
+        userService.stubFor(WireMock.post(urlEqualTo("/users/[^/]+/info"))
+                .willReturn(serverError()));
+        authService.stubFor(WireMock.post(urlEqualTo("/auth/validate"))
+                .willReturn(okJson(objectMapper.writeValueAsString(response))));
+    }
+
     @Test
     void saveOrder_shouldSaveAndReturnOrderAndUserInfo() throws Exception {
         CreateOrderDto orderDto = generateCreateOrderDto(0L);
+
+        setUpPositiveWireMockAnswer();
 
         ResponseDto responseDto = objectMapper.readValue(mockMvc.perform(post("/orders")
                 .header(HttpHeaders.AUTHORIZATION, token)
@@ -156,11 +178,27 @@ class OrderControllerTest {
         assertNotNull(responseDto);
         assertNotNull(responseDto.getOrder().getId());
         assertNotNull(responseDto.getUserInfo().getId());
+
+    }
+
+    @Test
+    void saveOrder_shouldThrowExceptionOnNullField() throws Exception {
+        CreateOrderDto orderDto = generateCreateOrderDto(0L);
+        orderDto.setItems(null);
+        setUpPositiveWireMockAnswer();
+
+        mockMvc.perform(post("/orders")
+                .header(HttpHeaders.AUTHORIZATION, token)
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .content(objectMapper.writeValueAsString(orderDto)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
     void getOrderById_shouldReturnOrderAndUserInfoById() throws Exception {
         CreateOrderDto orderDto = generateCreateOrderDto(0L);
+
+        setUpPositiveWireMockAnswer();
 
         ResponseDto responseDto = objectMapper.readValue(mockMvc.perform(post("/orders")
                         .header(HttpHeaders.AUTHORIZATION, token)
@@ -180,15 +218,39 @@ class OrderControllerTest {
     }
 
     @Test
-    void getAll_shouldReturnAllOrdersByCreationDate() throws Exception {
+    void getOrderById_shouldThrowExceptionOnNotAccessibleResource() throws Exception {
+        CreateOrderDto orderDto = generateCreateOrderDto(0L);
+
+        setUpPositiveWireMockAnswer();
+
+        ResponseDto responseDto = objectMapper.readValue(mockMvc.perform(post("/orders")
+                        .header(HttpHeaders.AUTHORIZATION, token)
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(objectMapper.writeValueAsString(orderDto)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), ResponseDto.class);
+
+        setUpNegativeWireMockAnswer();
+
+        mockMvc.perform(get("/orders/" + responseDto.getOrder().getId().toString())
+                        .header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getAll_shouldReturnAllOrdersByStatusAnfCreationDate() throws Exception {
+        setUpPositiveWireMockAnswer();
+
         List<OrderDto> saved = fillDbWithOrdersAndReturnOrders(15);
 
         JavaType type = objectMapper.getTypeFactory()
                 .constructParametricType(PageResponse.class, OrderDto.class);
 
         PageResponse<OrderDto> pageResponse = objectMapper.readValue(mockMvc.perform(get("/orders/search")
-                .param("status", "CREATED")
-                .header(HttpHeaders.AUTHORIZATION, token))
+                        .param("status", "CREATED")
+                        .param("start", LocalDate.now().minusMonths(1).toString())
+                        .param("end", LocalDate.now().toString())
+                        .header(HttpHeaders.AUTHORIZATION, token))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString(), type);
 
@@ -199,6 +261,8 @@ class OrderControllerTest {
 
     @Test
     void getAllByUserId_shouldReturnAllByUserId() throws Exception {
+        setUpPositiveWireMockAnswer();
+
         fillDbWithOrdersAndReturnOrders(15);
 
         PageResponseDto response = objectMapper.readValue(mockMvc.perform(get("/orders")
@@ -217,7 +281,29 @@ class OrderControllerTest {
     }
 
     @Test
+    void getAllByUserId_shouldThrowExceptionOnMissingOrder() throws Exception {
+        setUpPositiveWireMockAnswer();
+
+        mockMvc.perform(get("/orders")
+                        .header(HttpHeaders.AUTHORIZATION, token)
+                        .param("userId", "0"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getAllByUserId_shouldThrowExceptionOnMissingUserId() throws Exception {
+        setUpPositiveWireMockAnswer();
+
+        mockMvc.perform(get("/orders")
+                        .header(HttpHeaders.AUTHORIZATION, token)
+                        .param("userId", ""))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void updateOrderById_shouldUpdateAndReturnOrderAndUserInfoById() throws Exception {
+        setUpPositiveWireMockAnswer();
+
         OrderDto orderDto = fillDbWithOrdersAndReturnOrders(1).get(0);
 
         UpdateOrderDto update = new UpdateOrderDto();
@@ -237,15 +323,62 @@ class OrderControllerTest {
     }
 
     @Test
+    void updateOrderById_shouldThrowExceptionOnAllFieldsMissing() throws Exception {
+        setUpPositiveWireMockAnswer();
+
+        OrderDto orderDto = fillDbWithOrdersAndReturnOrders(1).get(0);
+
+        UpdateOrderDto update = new UpdateOrderDto();
+
+        mockMvc.perform(put("/orders/" + orderDto.getId())
+                        .header(HttpHeaders.AUTHORIZATION, token)
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(objectMapper.writeValueAsString(update)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void updateOrderById_shouldThrowExceptionOnNotAccessibleResource() throws Exception {
+        setUpPositiveWireMockAnswer();
+
+        OrderDto orderDto = fillDbWithOrdersAndReturnOrders(1).get(0);
+
+        setUpNegativeWireMockAnswer();
+
+        UpdateOrderDto update = new UpdateOrderDto();
+        update.setDeleted(true);
+        update.setStatus(OrderStatus.DELIVERED.name());
+
+        mockMvc.perform(put("/orders/" + orderDto.getId())
+                        .header(HttpHeaders.AUTHORIZATION, token)
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(objectMapper.writeValueAsString(update)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void deleteOrderById_shouldDeleteOrderById() throws Exception {
+        setUpPositiveWireMockAnswer();
+
         OrderDto orderDto = fillDbWithOrdersAndReturnOrders(1).get(0);
 
         mockMvc.perform(delete("/orders/" + orderDto.getId())
                 .header(HttpHeaders.AUTHORIZATION, token))
                 .andExpect(status().isNoContent());
 
-        List<Order> orders = orderRepository.findAll();
+        assertTrue(orderRepository.findById(orderDto.getId()).get().getDeleted());
+    }
 
-        assertTrue(orders.isEmpty());
+    @Test
+    void deleteOrderById_shouldThrowExceptionOnNotAccessibleResource() throws Exception {
+        setUpPositiveWireMockAnswer();
+
+        OrderDto orderDto = fillDbWithOrdersAndReturnOrders(1).get(0);
+
+        setUpNegativeWireMockAnswer();
+
+        mockMvc.perform(delete("/orders/" + orderDto.getId())
+                        .header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isForbidden());
     }
 }

@@ -32,7 +32,7 @@ import java.time.LocalDate;
 public class OrderController {
     private final OrderService orderService;
 
-    @PreAuthorize("hasRole('ADMIN') || #dto.userId == #authentication.principal.id")
+    @PreAuthorize("hasRole('ADMIN') || #dto.userId == authentication.principal.id")
     @PostMapping
     public ResponseEntity<ResponseDto> saveOrder(@RequestBody @Valid CreateOrderDto dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(orderService.createOrder(dto));
@@ -48,14 +48,14 @@ public class OrderController {
     @GetMapping("/search")
     public ResponseEntity<Page<OrderDto>> getAll(@RequestParam(name = "start", required = false) LocalDate start,
                                                  @RequestParam(name = "end", required = false) LocalDate end,
-                                                 @RequestParam(name = "status", required = false) String status,
+                                                 @RequestParam(name = "statuses", required = false) String[] statuses,
                                                  @RequestParam(defaultValue = "0") int page,
                                                  @RequestParam(defaultValue = "10") int size,
                                                  @RequestParam(defaultValue = "totalPrice", required = false) String sortBy) {
-        return ResponseEntity.ok(orderService.getAll(start, end, status, page, size, sortBy));
+        return ResponseEntity.ok(orderService.getAll(start, end, statuses, page, size, sortBy));
     }
 
-    @PreAuthorize("hasRole('ADMIN') || #userId == #authentication.principal.id")
+    @PreAuthorize("hasRole('ADMIN') || #userId == authentication.principal.id")
     @GetMapping
     public ResponseEntity<PageResponseDto> getAllByUserId(@RequestParam("userId") Long userId,
                                                           @RequestParam(defaultValue = "0") int page,

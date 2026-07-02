@@ -77,16 +77,13 @@ class OrderControllerTest {
 
     private final List<Long> items = new ArrayList<>();
 
-    private final static String token = "Bearer token";
-
-    @BeforeEach
-    void startWireMock() {
-        userService.start();
-        authService.start();
-    }
+    private final String MOCK_JWT_TOKEN = "Bearer token";
 
     @BeforeEach
     void setUpItems() {
+        userService.start();
+        authService.start();
+
         for (int i = 0; i < 15; i++) {
             Item item = new Item();
             item.setPrice(BigDecimal.valueOf(i + 1.01));
@@ -169,7 +166,7 @@ class OrderControllerTest {
         setUpPositiveWireMockAnswer();
 
         ResponseDto responseDto = objectMapper.readValue(mockMvc.perform(post("/orders")
-                .header(HttpHeaders.AUTHORIZATION, token)
+                .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN)
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(objectMapper.writeValueAsString(orderDto)))
                 .andExpect(status().isCreated())
@@ -188,7 +185,7 @@ class OrderControllerTest {
         setUpPositiveWireMockAnswer();
 
         mockMvc.perform(post("/orders")
-                .header(HttpHeaders.AUTHORIZATION, token)
+                .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN)
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(objectMapper.writeValueAsString(orderDto)))
                 .andExpect(status().isBadRequest());
@@ -201,14 +198,14 @@ class OrderControllerTest {
         setUpPositiveWireMockAnswer();
 
         ResponseDto responseDto = objectMapper.readValue(mockMvc.perform(post("/orders")
-                        .header(HttpHeaders.AUTHORIZATION, token)
+                        .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON_VALUE)
                         .content(objectMapper.writeValueAsString(orderDto)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString(), ResponseDto.class);
 
         ResponseDto value = objectMapper.readValue(mockMvc.perform(get("/orders/" + responseDto.getOrder().getId().toString())
-                .header(HttpHeaders.AUTHORIZATION, token))
+                .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString(), ResponseDto.class);
 
@@ -224,7 +221,7 @@ class OrderControllerTest {
         setUpPositiveWireMockAnswer();
 
         ResponseDto responseDto = objectMapper.readValue(mockMvc.perform(post("/orders")
-                        .header(HttpHeaders.AUTHORIZATION, token)
+                        .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON_VALUE)
                         .content(objectMapper.writeValueAsString(orderDto)))
                 .andExpect(status().isCreated())
@@ -233,7 +230,7 @@ class OrderControllerTest {
         setUpNegativeWireMockAnswer();
 
         mockMvc.perform(get("/orders/" + responseDto.getOrder().getId().toString())
-                        .header(HttpHeaders.AUTHORIZATION, token))
+                        .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN))
                 .andExpect(status().isForbidden());
     }
 
@@ -250,7 +247,7 @@ class OrderControllerTest {
                         .param("status", "CREATED")
                         .param("start", LocalDate.now().minusMonths(1).toString())
                         .param("end", LocalDate.now().toString())
-                        .header(HttpHeaders.AUTHORIZATION, token))
+                        .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString(), type);
 
@@ -266,7 +263,7 @@ class OrderControllerTest {
         fillDbWithOrdersAndReturnOrders(15);
 
         PageResponseDto response = objectMapper.readValue(mockMvc.perform(get("/orders")
-                .header(HttpHeaders.AUTHORIZATION, token)
+                .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN)
                 .param("userId", "0"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString(), PageResponseDto.class);
@@ -285,7 +282,7 @@ class OrderControllerTest {
         setUpPositiveWireMockAnswer();
 
         mockMvc.perform(get("/orders")
-                        .header(HttpHeaders.AUTHORIZATION, token)
+                        .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN)
                         .param("userId", "0"))
                 .andExpect(status().isBadRequest());
     }
@@ -295,7 +292,7 @@ class OrderControllerTest {
         setUpPositiveWireMockAnswer();
 
         mockMvc.perform(get("/orders")
-                        .header(HttpHeaders.AUTHORIZATION, token)
+                        .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN)
                         .param("userId", ""))
                 .andExpect(status().isBadRequest());
     }
@@ -311,7 +308,7 @@ class OrderControllerTest {
         update.setStatus(OrderStatus.DELIVERED.name());
 
         ResponseDto response = objectMapper.readValue(mockMvc.perform(put("/orders/" + orderDto.getId())
-                .header(HttpHeaders.AUTHORIZATION, token)
+                .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN)
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(objectMapper.writeValueAsString(update)))
                 .andExpect(status().isOk())
@@ -331,7 +328,7 @@ class OrderControllerTest {
         UpdateOrderDto update = new UpdateOrderDto();
 
         mockMvc.perform(put("/orders/" + orderDto.getId())
-                        .header(HttpHeaders.AUTHORIZATION, token)
+                        .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON_VALUE)
                         .content(objectMapper.writeValueAsString(update)))
                 .andExpect(status().isBadRequest());
@@ -350,7 +347,7 @@ class OrderControllerTest {
         update.setStatus(OrderStatus.DELIVERED.name());
 
         mockMvc.perform(put("/orders/" + orderDto.getId())
-                        .header(HttpHeaders.AUTHORIZATION, token)
+                        .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON_VALUE)
                         .content(objectMapper.writeValueAsString(update)))
                 .andExpect(status().isForbidden());
@@ -363,7 +360,7 @@ class OrderControllerTest {
         OrderDto orderDto = fillDbWithOrdersAndReturnOrders(1).get(0);
 
         mockMvc.perform(delete("/orders/" + orderDto.getId())
-                .header(HttpHeaders.AUTHORIZATION, token))
+                .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN))
                 .andExpect(status().isNoContent());
 
         assertTrue(orderRepository.findById(orderDto.getId()).get().getDeleted());
@@ -378,7 +375,7 @@ class OrderControllerTest {
         setUpNegativeWireMockAnswer();
 
         mockMvc.perform(delete("/orders/" + orderDto.getId())
-                        .header(HttpHeaders.AUTHORIZATION, token))
+                        .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN))
                 .andExpect(status().isForbidden());
     }
 }

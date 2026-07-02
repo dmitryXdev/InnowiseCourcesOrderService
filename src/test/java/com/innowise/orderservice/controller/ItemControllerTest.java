@@ -47,7 +47,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestConfig.class)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-public class ItemControllerTest {
+class ItemControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
@@ -63,7 +63,7 @@ public class ItemControllerTest {
     @MockitoBean
     private AuthServiceClient authServiceClient;
 
-    private final static String token = "Bearer token";
+    private final String MOCK_JWT_TOKEN = "Bearer token";
 
     @BeforeEach
     void setUpFeign() {
@@ -100,7 +100,7 @@ public class ItemControllerTest {
         createItemDto.setPrice(BigDecimal.ONE);
 
         ItemDto item = objectMapper.readValue(mockMvc.perform(post("/items")
-                        .header(HttpHeaders.AUTHORIZATION, token)
+                        .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON_VALUE)
                         .content(objectMapper.writeValueAsString(createItemDto)))
                 .andExpect(status().isCreated())
@@ -118,7 +118,7 @@ public class ItemControllerTest {
         update.setName(item.getName() + ": updated");
 
         ItemDto dto = objectMapper.readValue(mockMvc.perform(put("/items/" + item.getId())
-                        .header(HttpHeaders.AUTHORIZATION, token)
+                        .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON_VALUE)
                         .content(objectMapper.writeValueAsString(update)))
                 .andExpect(status().isOk())
@@ -133,7 +133,7 @@ public class ItemControllerTest {
         Item item = fillDbWithItemsAndReturn(1).get(0);
 
         mockMvc.perform(delete("/items/" + item.getId())
-                .header(HttpHeaders.AUTHORIZATION, token))
+                .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN))
                 .andExpect(status().isNoContent());
     }
 

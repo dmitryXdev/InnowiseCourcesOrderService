@@ -210,6 +210,29 @@ class OrderControllerTest {
     }
 
     @Test
+    void saveOrder_shouldThrowBadRequestOnMissingDataFromUserService() throws Exception {
+        CreateOrderDto orderDto = generateCreateOrderDto(0L);
+
+        TokenValidationResponseDto response = TokenValidationResponseDto.builder()
+                .valid(true)
+                .role("ADMIN")
+                .userId(null)
+                .build();
+
+        authService.stubFor(WireMock.post(urlEqualTo("/auth/validate"))
+                .willReturn(okJson(objectMapper.writeValueAsString(response))));
+
+        userService.stubFor(WireMock.post(urlPathMatching("/users/[^/]+/info"))
+                .willReturn(okJson(null)));
+
+        mockMvc.perform(post("/orders")
+                        .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(objectMapper.writeValueAsString(orderDto)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void saveOrder_shouldThrowExceptionOnServiceUnavailable() throws Exception {
         CreateOrderDto orderDto = generateCreateOrderDto(0L);
 

@@ -4,6 +4,7 @@ import com.innowise.orderservice.dto.TokenValidationRequestDto;
 import com.innowise.orderservice.dto.TokenValidationResponseDto;
 import com.innowise.orderservice.feign.AuthServiceClient;
 import com.innowise.orderservice.security.UserPrincipal;
+import feign.FeignException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -40,7 +41,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         TokenValidationResponseDto validationResponse;
 
-        validationResponse = authServiceClient.validate(new TokenValidationRequestDto(token));
+        try {
+            validationResponse = authServiceClient.validate(new TokenValidationRequestDto(token));
+        } catch (FeignException e) {
+            response.sendError(e.status());
+            return;
+        }
 
         if (validationResponse == null || !validationResponse.isValid()) {
             response.setStatus(HttpStatus.FORBIDDEN.value());

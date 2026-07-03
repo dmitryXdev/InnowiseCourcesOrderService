@@ -246,7 +246,7 @@ class OrderControllerTest {
     }
 
     @Test
-    void saveOrder_shouldReturn403_onAuthServiceError() throws Exception {
+    void saveOrder_shouldReturn403_onAuthServiceForbidden() throws Exception {
         CreateOrderDto orderDto = generateCreateOrderDto(0L);
 
         authService.stubFor(WireMock.post(urlEqualTo("/auth/validate"))

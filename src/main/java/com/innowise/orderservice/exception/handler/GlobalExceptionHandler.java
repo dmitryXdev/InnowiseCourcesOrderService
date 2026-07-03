@@ -3,14 +3,9 @@ package com.innowise.orderservice.exception.handler;
 import com.innowise.orderservice.exception.AccessDeniedException;
 import com.innowise.orderservice.exception.BadIncomeDataException;
 import com.innowise.orderservice.exception.EntityNotFoundException;
-import feign.FeignException;
-import feign.FeignException.ServiceUnavailable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.converter.HttpMessageConversionException;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.CredentialsExpiredException;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestValueException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -23,7 +18,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .body(
                         ErrorResponse.builder()
-                                .message(e.getClass().getName())
+                                .message(e.getMessage())
                                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                                 .build()
                 );
@@ -62,39 +57,6 @@ public class GlobalExceptionHandler {
                 );
     }
 
-    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
-    public ResponseEntity<ErrorResponse> accessDeniedException(org.springframework.security.access.AccessDeniedException e) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN.value())
-                .body(
-                        ErrorResponse.builder()
-                                .message(e.getMessage())
-                                .status(HttpStatus.FORBIDDEN.value())
-                                .build()
-                );
-    }
-
-    @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<ErrorResponse> authenticationException(AuthenticationException e) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN.value())
-                .body(
-                        ErrorResponse.builder()
-                                .message(e.getMessage())
-                                .status(HttpStatus.FORBIDDEN.value())
-                                .build()
-                );
-    }
-
-    @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ErrorResponse> badCredentialsException(BadCredentialsException e) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN.value())
-                .body(
-                        ErrorResponse.builder()
-                                .message(e.getMessage())
-                                .status(HttpStatus.FORBIDDEN.value())
-                                .build()
-                );
-    }
-
     @ExceptionHandler(CredentialsExpiredException.class)
     public ResponseEntity<ErrorResponse> credentialsExpiredException(CredentialsExpiredException e) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN.value())
@@ -108,17 +70,6 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ErrorResponse> entityNotFoundException(EntityNotFoundException e) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST.value())
-                .body(
-                        ErrorResponse.builder()
-                                .message(e.getMessage())
-                                .status(HttpStatus.BAD_REQUEST.value())
-                                .build()
-                );
-    }
-
-    @ExceptionHandler(HttpMessageConversionException.class)
-    public ResponseEntity<ErrorResponse> entityNotFoundException(HttpMessageConversionException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST.value())
                 .body(
                         ErrorResponse.builder()

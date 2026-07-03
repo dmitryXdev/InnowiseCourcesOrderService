@@ -1,6 +1,7 @@
 package com.innowise.orderservice.controller;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.innowise.orderservice.config.TestConfig;
 import com.innowise.orderservice.dao.ItemRepository;
@@ -38,6 +39,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.badRequest;
 import static com.github.tomakehurst.wiremock.client.WireMock.forbidden;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.serverError;
@@ -161,17 +163,18 @@ class OrderControllerTest {
                 .willReturn(okJson(objectMapper.writeValueAsString(response))));
     }
 
-    @Test
-    void saveOrder_mustThrowExceptionOnNotValidToken() throws Exception {
-        CreateOrderDto orderDto = generateCreateOrderDto(0L);
+    private void setUpNegativeUserServiceAnswer(ResponseDefinitionBuilder exception) {
+        TokenValidationResponseDto response = TokenValidationResponseDto.builder()
+                .valid(true)
+                .role("ADMIN")
+                .userId(null)
+                .build();
 
-        setUpNegativeWireMockAnswer();
+        authService.stubFor(WireMock.post(urlEqualTo("/auth/validate"))
+                .willReturn(okJson(objectMapper.writeValueAsString(response))));
 
-        mockMvc.perform(post("/orders")
-                        .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN)
-                        .contentType(MediaType.APPLICATION_JSON_VALUE)
-                        .content(objectMapper.writeValueAsString(orderDto)))
-                .andExpect(status().isForbidden());
+        userService.stubFor(WireMock.post(urlPathMatching("/users/[^/]+/info"))
+                .willReturn(exception));
     }
 
     @Test
@@ -227,6 +230,59 @@ class OrderControllerTest {
                         .contentType(MediaType.APPLICATION_JSON_VALUE)
                         .content(objectMapper.writeValueAsString(orderDto)))
                 .andExpect(status().isBadGateway());
+    }
+
+    @Test
+    void saveOrder_shouldReturn403_onNotValidToken() throws Exception {
+        CreateOrderDto orderDto = generateCreateOrderDto(0L);
+
+        setUpNegativeWireMockAnswer();
+
+        mockMvc.perform(post("/orders")
+                        .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(objectMapper.writeValueAsString(orderDto)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void saveOrder_shouldReturn403_onAuthServiceError() throws Exception {
+        CreateOrderDto orderDto = generateCreateOrderDto(0L);
+
+        authService.stubFor(WireMock.post(urlEqualTo("/auth/validate"))
+                .willReturn(forbidden()));
+
+        mockMvc.perform(post("/orders")
+                        .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(objectMapper.writeValueAsString(orderDto)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void saveOrder_shouldReturn501_onUserServiceError() throws Exception {
+        CreateOrderDto orderDto = generateCreateOrderDto(0L);
+
+        setUpNegativeUserServiceAnswer(serverError());
+
+        mockMvc.perform(post("/orders")
+                        .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(objectMapper.writeValueAsString(orderDto)))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    void saveOrder_shouldReturn400_onUserServiceBadRequest() throws Exception {
+        CreateOrderDto orderDto = generateCreateOrderDto(0L);
+
+        setUpNegativeUserServiceAnswer(badRequest());
+
+        mockMvc.perform(post("/orders")
+                        .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(objectMapper.writeValueAsString(orderDto)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

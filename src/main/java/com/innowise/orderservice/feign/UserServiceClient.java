@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.PostMapping;
         url = "${services.user.url}",
         configuration = FeignConfiguration.class,
         fallbackFactory = UserServiceClientFallbackFactory.class)
-@Validated
 public interface UserServiceClient {
     @PostMapping("/users/{id}/info")
     @Valid

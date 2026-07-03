@@ -38,8 +38,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.forbidden;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.serverError;
+import static com.github.tomakehurst.wiremock.client.WireMock.serviceUnavailable;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -153,10 +155,23 @@ class OrderControllerTest {
                 .userId(null)
                 .build();
 
-        userService.stubFor(WireMock.post(urlEqualTo("/users/[^/]+/info"))
+        userService.stubFor(WireMock.post(urlPathMatching("/users/[^/]+/info"))
                 .willReturn(serverError()));
         authService.stubFor(WireMock.post(urlEqualTo("/auth/validate"))
                 .willReturn(okJson(objectMapper.writeValueAsString(response))));
+    }
+
+    @Test
+    void saveOrder_mustThrowExceptionOnNotValidToken() throws Exception {
+        CreateOrderDto orderDto = generateCreateOrderDto(0L);
+
+        setUpNegativeWireMockAnswer();
+
+        mockMvc.perform(post("/orders")
+                        .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(objectMapper.writeValueAsString(orderDto)))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -189,6 +204,29 @@ class OrderControllerTest {
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(objectMapper.writeValueAsString(orderDto)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void saveOrder_shouldThrowExceptionOnServiceUnavailable() throws Exception {
+        CreateOrderDto orderDto = generateCreateOrderDto(0L);
+
+        TokenValidationResponseDto response = TokenValidationResponseDto.builder()
+                .valid(true)
+                .role("ADMIN")
+                .userId(null)
+                .build();
+
+        authService.stubFor(WireMock.post(urlEqualTo("/auth/validate"))
+                .willReturn(okJson(objectMapper.writeValueAsString(response))));
+
+        userService.stubFor(WireMock.post(urlPathMatching("/users/[^/]+/info"))
+                        .willReturn(serviceUnavailable()));
+
+        mockMvc.perform(post("/orders")
+                        .header(HttpHeaders.AUTHORIZATION, MOCK_JWT_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(objectMapper.writeValueAsString(orderDto)))
+                .andExpect(status().isBadGateway());
     }
 
     @Test

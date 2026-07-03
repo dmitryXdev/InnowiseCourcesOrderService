@@ -3,7 +3,8 @@ package com.innowise.orderservice.exception.handler;
 import com.innowise.orderservice.exception.AccessDeniedException;
 import com.innowise.orderservice.exception.BadIncomeDataException;
 import com.innowise.orderservice.exception.EntityNotFoundException;
-import com.innowise.orderservice.exception.ServiceUnavailableException;
+import feign.FeignException;
+import feign.FeignException.ServiceUnavailable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageConversionException;
@@ -46,17 +47,6 @@ public class GlobalExceptionHandler {
                         ErrorResponse.builder()
                                 .message(e.getMessage())
                                 .status(HttpStatus.BAD_REQUEST.value())
-                                .build()
-                );
-    }
-
-    @ExceptionHandler(ServiceUnavailableException.class)
-    public ResponseEntity<ErrorResponse> userServiceUnavailable(ServiceUnavailableException e) {
-        return ResponseEntity.status(HttpStatus.BAD_GATEWAY.value())
-                .body(
-                        ErrorResponse.builder()
-                                .message(e.getMessage())
-                                .status(HttpStatus.BAD_GATEWAY.value())
                                 .build()
                 );
     }

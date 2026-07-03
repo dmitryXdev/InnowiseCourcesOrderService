@@ -5,7 +5,6 @@ import com.innowise.orderservice.exception.BadIncomeDataException;
 import com.innowise.orderservice.exception.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.CredentialsExpiredException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestValueException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -48,17 +47,6 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> accessDeniedException(AccessDeniedException e) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN.value())
-                .body(
-                        ErrorResponse.builder()
-                                .message(e.getMessage())
-                                .status(HttpStatus.FORBIDDEN.value())
-                                .build()
-                );
-    }
-
-    @ExceptionHandler(CredentialsExpiredException.class)
-    public ResponseEntity<ErrorResponse> credentialsExpiredException(CredentialsExpiredException e) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN.value())
                 .body(
                         ErrorResponse.builder()

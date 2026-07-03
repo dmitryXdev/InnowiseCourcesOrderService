@@ -137,7 +137,7 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new EntityNotFoundException(ORDER_NOT_FOUND_MESSAGE));
 
         if(dto.getDeleted() == null && dto.getItems() == null && dto.getStatus() == null) {
-            throw new BadIncomeDataException("Np data presented");
+            throw new BadIncomeDataException("No data presented");
         }
 
         UserInfoDto userinfo = getUserInfoById(order.getUserId());

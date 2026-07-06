@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-tables
+      author: admin
+      changes:
+        - sqlFile:
+            path: sql/create-orders-table.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            path: sql/create-items-table.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            path: sql/create-order_items-table.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            path: sql/add-items-table-indexes.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            path: sql/add-orders-table-indexes.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            path: sql/add-order_items-indexes.sql
+            relativeToChangelogFile: true
